@@ -131,6 +131,22 @@ aiken build
 # Run tests
 aiken check
 ```
+### **Cardano Node**
+
+Clone Ogmios repository
+```sh
+git clone git@github.com:CardanoSolutions/ogmios.git
+```
+
+Get the cardano node file configs from : 
+
+https://developers.cardano.org/docs/get-started/cardano-node/running-cardano
+
+Into /server/config/network/preview/cardano-node
+
+```sh
+NETWORK=preview docker compose up -d
+```
 
 ---
 

@@ -1,7 +1,5 @@
-use cardano/address.{Address, Credential, VerificationKey}
+use cardano/address.{Address, VerificationKey}
 use cardano/assets
-use cardano/certificate.{Certificate}
-use cardano/governance.{ProposalProcedure, Voter}
 use cardano/transaction.{InlineDatum, OutputReference, Transaction}
 use aiken/collection/list
 

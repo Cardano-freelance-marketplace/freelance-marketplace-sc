@@ -2,7 +2,7 @@ use cardano/address.{Address, Credential, VerificationKey}
 use cardano/assets
 use cardano/certificate.{Certificate}
 use cardano/governance.{ProposalProcedure, Voter}
-use cardano/transaction.{OutputReference, Transaction}
+use cardano/transaction.{InlineDatum, OutputReference, Transaction}
 use aiken/collection/list
 
 pub type Milestone {
@@ -41,7 +41,50 @@ validator job_agreements {
     expect Some(datum) = d
     
     when redeemer.action is {
-      ApproveMilestone -> True
+
+      ApproveMilestone -> {
+        expect Some(ownInput) =
+        list.find(
+          tx.inputs,
+          fn(input) {
+            input.output_reference == utxo
+          }
+        )
+        // script hash 
+        let ownHash = ownInput.output.address.payment_credential
+
+        expect Some(ownOutput) =
+          list.find(
+            tx.outputs,
+            fn(output) {
+              output.address.payment_credential == ownHash && output.value == ownInput.output.value
+            }
+          )
+
+        
+        expect InlineDatum(inlineDatum) = ownOutput.datum
+        expect newDatum: JobAgreement = inlineDatum
+
+        let is_valid_redeemer = list.has(tx.extra_signatories, datum.client) || list.has(tx.extra_signatories, datum.freelancer)
+        let changed_by_freelancer =
+          redeemer.signer == datum.freelancer &&
+          newDatum.milestone.approved_by_freelancer != datum.milestone.approved_by_freelancer &&
+          newDatum.milestone.approved_by_client == datum.milestone.approved_by_client
+
+        let changed_by_client =
+          redeemer.signer == datum.client &&
+          newDatum.milestone.approved_by_client != datum.milestone.approved_by_client &&
+          newDatum.milestone.approved_by_freelancer == datum.milestone.approved_by_freelancer
+
+        let reward_unchanged = newDatum.milestone.reward == datum.milestone.reward
+        let paid_unchanged = newDatum.milestone.paid == datum.milestone.paid
+
+        (changed_by_freelancer || changed_by_client) &&
+        reward_unchanged &&
+        paid_unchanged &&
+        is_valid_redeemer
+      }
+
       RedeemMilestone -> {
         expect Some(payment) = 
         list.find(
@@ -55,6 +98,7 @@ validator job_agreements {
         let is_milestone_approved = datum.milestone.approved_by_client == True && datum.milestone.approved_by_freelancer == True
         is_valid_redeemer && is_milestone_approved && payment_valid
       }
+
       Refund -> {
         expect Some(refund) = 
         list.find(

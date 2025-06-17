@@ -4,6 +4,7 @@ use cardano/transaction.{InlineDatum, OutputReference, Transaction}
 use aiken/collection/list
 
 pub type Milestone {
+  milestone_id: Int,
   reward: Int,
   approved_by_freelancer: Bool,
   approved_by_client: Bool,

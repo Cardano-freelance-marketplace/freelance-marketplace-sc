@@ -11,6 +11,7 @@ pub type Milestone {
   paid: Bool,
 }
 
+
 pub type JobAgreement {
   freelancer: ByteArray,
   client: ByteArray,
@@ -20,7 +21,9 @@ pub type JobAgreement {
 pub type Action {
   ApproveMilestone
   RedeemMilestone
-  Refund
+  RefundMilestone
+  UpdateContract
+  DeleteContract
 }
 pub type Redeemer {
   signer: ByteArray,
@@ -37,21 +40,50 @@ validator job_agreements {
     utxo: OutputReference,
     tx: Transaction,
   )-> Bool {
+    let dapp_wallet_key: ByteArray = "0x605249cfefde2ec040e4fcd73a998b921aaba6de1aded09419afbf6c03"
     expect Some(datum) = d
-    
+    // Creating variable to save script's own Hash / Address
+    expect Some(ownInput) = list.find(tx.inputs, fn(input) { input.output_reference == utxo })
+    let ownHash = ownInput.output.address.payment_credential
+
     when redeemer.action is {
+      UpdateContract -> {
+        // Only allow if signed by DApps Wallet
+        let is_valid_redeemer = list.has(tx.extra_signatories, dapp_wallet_key)
+        
+        // Validating if output is sent to Scripts own address 
+        expect Some(ownOutput) = list.find(tx.outputs, fn(output) {
+          output.address.payment_credential == ownHash && output.value == ownInput.output.value
+        })
+        
+        expect InlineDatum(inlineDatum) = ownOutput.datum
+        expect newDatum: JobAgreement = inlineDatum
+        
+        is_valid_redeemer
+      }
+      
+      DeleteContract -> {
+        // Only allow if signed by DApps Wallet
+        let is_valid_redeemer = list.has(tx.extra_signatories, dapp_wallet_key)
+
+        let scriptInputCount = list.length(
+          list.filter(tx.inputs, fn(input) {
+            input.output.address.payment_credential == ownHash
+          })
+        )
+
+        let scriptOutputCount = list.length(
+          list.filter(tx.outputs, fn(output) {
+            output.address.payment_credential == ownHash
+          })
+        )
+        
+        scriptInputCount >= 1 &&
+        scriptOutputCount == 0 &&
+        is_valid_redeemer
+      }
 
       ApproveMilestone -> {
-        expect Some(ownInput) =
-        list.find(
-          tx.inputs,
-          fn(input) {
-            input.output_reference == utxo
-          }
-        )
-        // script hash 
-        let ownHash = ownInput.output.address.payment_credential
-
         expect Some(ownOutput) =
           list.find(
             tx.outputs,
@@ -98,7 +130,7 @@ validator job_agreements {
         is_valid_redeemer && is_milestone_approved && payment_valid
       }
 
-      Refund -> {
+      RefundMilestone -> {
         expect Some(refund) = 
         list.find(
           tx.outputs,

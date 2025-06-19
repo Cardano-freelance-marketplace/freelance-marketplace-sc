@@ -57,9 +57,9 @@ validator job_agreements {
         })
         
         expect InlineDatum(inlineDatum) = ownOutput.datum
-        expect newDatum: JobAgreement = inlineDatum
+        expect _newDatum: JobAgreement = inlineDatum
         
-        is_valid_redeemer
+        is_valid_redeemer?
       }
       
       DeleteContract -> {
